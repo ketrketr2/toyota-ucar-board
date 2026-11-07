@@ -1,0 +1,87 @@
+name: ucar-refresh
+
+# 中古車ボードの自動更新（毎朝）と、止まったとき・計測の前日のお知らせ。
+#   07:12 JST に作り直す（08:40 JST に予備の便。差分がなければ何もしない）
+#   18:05 JST に翌日の計測の予定を確かめて、予告を出す
+# 公開の流れ：計測データ（toyota-geo-board）を読み込む → 点検 → 公開鍵で暗号化 → index.html を置き換える
+# パスワードや秘密鍵は、ここには一切置かない（公開鍵だけで暗号化できる仕組み）。
+# 点検に通らないときは公開せず、前の版を残したまま Issue で知らせる（持ち主にメールが届く）。
+# Slack にも送るときは Settings > Secrets and variables > Actions に SLACK_WEBHOOK_URL を登録する。
+
+on:
+  schedule:
+    - cron: "12 22 * * *"
+    - cron: "40 23 * * *"
+    - cron: "5 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: ucar-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONHASHSEED: "0"   # 毎回同じ結果になるように（変化がない日は公開し直さない）
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 計測データを取得（toyota-geo-board）
+        uses: actions/checkout@v4
+        with:
+          repository: ketrketr2/toyota-geo-board
+          path: toyota-geo-board
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 道具を入れる
+        run: pip install pyyaml cryptography
+
+      - name: データを作り直す
+        run: |
+          mkdir -p work
+          python3 tools/build_data.py work/board_data.json
+          python3 tools/build_extra.py work/board_data.json work/board_extra.json
+
+      - name: 点検
+        id: check
+        run: |
+          set -o pipefail
+          python3 tools/check.py work . | tee work/check.txt
+          { echo '### 点検の結果'; echo '```'; cat work/check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 暗号化して公開
+        run: |
+          if python3 -c "import json,sys;sys.exit(0 if json.load(open('status.json'))['unchanged'] else 1)"; then
+            echo "データに変化なし。公開中のページはそのまま"
+            git checkout -- index.html status.json 2>/dev/null || true
+          else
+            python3 tools/seal.py page --gate gate --data work/board_full.json --out index.html
+            python3 tools/verify_page.py index.html gate
+          fi
+          git config user.name "ucar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html status.json
+          if git diff --staged --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "data: 自動更新 $(TZ=Asia/Tokyo date +%F' '%H:%M)"
+            git pull --rebase -q || true
+            git push
+          fi
+
+      - name: お知らせ
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python3 tools/notify.py status.json "${{ job.status }}"

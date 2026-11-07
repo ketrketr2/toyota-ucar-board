@@ -1,0 +1,5 @@
+{
+  "note": "publish_start に最初の記事の掲載日（YYYY-MM-DD）を書くと、その日以降の計測を「掲載後」として数えます。計測の予定は toyota-geo-board の triggers/ucar-round.json・ucar-wide.json から自動で読みます。",
+  "publish_start": null,
+  "schedule": []
+}
