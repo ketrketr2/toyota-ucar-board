@@ -43,10 +43,44 @@ ROUNDS = [
     + load(['responses_2026-10-19T1602.json']),
     load(['responses_2026-10-26T0832.json']),
 ]
+# 掲載前②より後の計測（掲載後など）：board_data.json と同じ決まりで「回」を見つけ、同じ順に並べる（3回以上聞いた日だけ）
+KNOWN = {'responses_2026-10-19T1539.json', 'responses_2026-10-19T1602.json', 'responses_2026-10-19T1632.json',
+         'responses_2026-10-26T0832.json', 'responses_2026-10-21T0907.json'}
+_by_date = collections.defaultdict(list)
+for _f in sorted(U.glob('responses_*.json')):
+    _d = _f.name[len('responses_'):len('responses_') + 10]
+    if _f.name not in KNOWN and _d > '2026-10-26':
+        _by_date[_d].append(_f.name)
+_extra = []
+for _d, _files in sorted(_by_date.items()):
+    _best = {}
+    for _fn in _files:
+        for _r in json.load(open(U / _fn, encoding='utf-8')):
+            _best[(_r['qid'], _r['surface'], _r.get('run', 0))] = _r
+    _rows = list(_best.values())
+    if 1 + max((_r.get('run', 0) for _r in _rows), default=0) >= 3:
+        _extra.append((_d, _rows))
+if [d for d, _ in _extra] == [r['date'] for r in D['rounds'][2:]]:
+    ROUNDS += [rows for _, rows in _extra]
+else:
+    print('注意：掲載前②より後の回が board_data.json と合わないため、行き先の図には入れません', [d for d, _ in _extra], [r['date'] for r in D['rounds'][2:]])
 
 # ------------------------------------------------------------------ flow：答え1件ずつの行き先
 DEST = ['toyota', 'carsensor', 'goonet', 'nextage', 'gulliver', 'other', 'none']
 NN = set(G['nonnamed61'])
+CITE_HOST = [('carsensor.net', 1), ('goo-net.com', 2), ('nextage.jp', 3), ('221616.com', 4)]
+
+
+def cite_dest(cits):
+    """参考元の並び順で、最初に出た他社（4社）のサイト。4社がなく参考元があれば「ほか」、参考元がなければ「なし」"""
+    if not cits:
+        return 6
+    for c in cits:
+        h = host(c.get('url')) or (c.get('domain') or '').lower().removeprefix('www.')
+        for suf, i in CITE_HOST:
+            if h.endswith(suf):
+                return i
+    return 5
 flow = []
 cite_rows = []
 for ri, rows in enumerate(ROUNDS):
@@ -62,7 +96,11 @@ for ri, rows in enumerate(ROUNDS):
             d = 6
         f = j['first']
         fc = 6 if not f else (DEST.index(f) if f in DEST else 5)
-        flow.append([ri, SURF.index(r['surface']), QI[r['qid']], d, r.get('run', 0), fc])
+        # 言及：本文にトヨタのお店の名前が出たか。出ないときは本文で最初に名前が出た店
+        dm = 0 if j['m']['toyota'] else fc
+        # 引用：参考元にトヨタのサイトが出たか。出ないときは参考元で最初に出た他社のサイト（他社がなければ、ほかのサイト・参考元なし）
+        dc = 0 if j['c']['toyota'] else cite_dest(r.get('citations'))
+        flow.append([ri, SURF.index(r['surface']), QI[r['qid']], d, r.get('run', 0), fc, dm, dc])
         cite_rows.append((ri, r))
 
 # ------------------------------------------------------------------ cites：参考元の顔ぶれ
