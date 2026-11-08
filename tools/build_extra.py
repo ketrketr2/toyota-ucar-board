@@ -255,6 +255,41 @@ for q in sorted(GEN, key=lambda q: -(SV.get(SPI[q]['kw']) or 0)):
                FE.index(f) if f in FE else (5 if f else 6)])
 wideq = {'rows': wq, 'cats': CAT_ORDER, 'rates': wide_rates, 'first_codes': FE + ['other', 'none']}
 
+# 1,761本の答えの例（総覧の「中古車の検索全体」の例で読む）：カテゴリごとに検索数が最も多い語＋主な車名の語
+_bycat = collections.defaultdict(list)
+for _r in wq:
+    _bycat[_r[1]].append(_r)
+WS_KW = [sorted(_bycat[_c], key=lambda r: -r[2])[0][0] for _c in range(len(CAT_ORDER)) if _bycat.get(_c)]
+for _kw in ['シエンタ 中古', 'ヴォクシー 中古', 'ライズ 中古']:
+    if _kw not in WS_KW:
+        WS_KW.append(_kw)
+_kw2q = {SPI[q]['kw']: q for q in GEN}
+_wsamp = {}
+for _kw in WS_KW:
+    _q = _kw2q.get(_kw)
+    if not _q:
+        continue
+    _ent = {}
+    for r in wrows:
+        if r['qid'] != _q or not (r.get('text') or '').strip():
+            continue
+        if r['surface'] == 'aio' and r.get('has_ai') is False:
+            continue
+        j = judge(r['text'], r.get('citations'))
+        _t = re.sub(r'\n{3,}', '\n\n', r['text'].strip())
+        _c, _seen = [], set()
+        for c in (r.get('citations') or []):
+            h = host(c.get('url'))
+            if not h or h in _seen:
+                continue
+            _seen.add(h)
+            _c.append([h, (c.get('title') or '')[:60], c.get('url') or ''])
+            if len(_c) >= 5:
+                break
+        _ent[r['surface']] = {'t': _t[:900] + ('…' if len(_t) > 900 else ''), 'c': _c, 'a': 1 if j['a']['toyota'] else 0, 'f': j['first']}
+    _wsamp[_kw] = {'cat': CAT_W.get(SPI[_q]['kubun'], SPI[_q]['kubun']), 'vol': SV.get(_kw) or 0, 's': _ent}
+wideq['samples'] = _wsamp
+
 # ------------------------------------------------------------------ ga4x：全体との比較
 def rcsv(p):
     with open(p, encoding='utf-8') as f:

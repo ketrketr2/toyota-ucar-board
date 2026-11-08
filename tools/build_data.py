@@ -276,7 +276,7 @@ def samples(E, maxlen=1100):
             cits.append([h, (c.get('title') or '')[:70], c.get('url') or ''])
             if len(cits) >= 8:
                 break
-        out.setdefault(r['qid'], {})[r['surface']] = {'t': txt[:maxlen] + ('…' if cut else ''), 'c': cits, 'n': len(r.get('citations') or [])}
+        out.setdefault(r['qid'], {})[r['surface']] = {'t': txt[:maxlen] + ('…' if cut else ''), 'c': cits, 'n': len(r.get('citations') or []), 'a': 1 if j['a']['toyota'] else 0}
     return out
 
 data = {'generated_at': datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d %H:%M'),
