@@ -321,10 +321,11 @@ for _kw in WS_KW:
             if not h or h in _seen:
                 continue
             _seen.add(h)
-            _c.append([h, (c.get('title') or '')[:60], c.get('url') or ''])
-            if len(_c) >= 5:
+            _c.append([h, (c.get('title') or '')[:70], c.get('url') or ''])
+            if len(_c) >= 10:
                 break
-        _ent[r['surface']] = {'t': _t[:900] + ('…' if len(_t) > 900 else ''), 'c': _c, 'a': 1 if j['a']['toyota'] else 0, 'f': j['first']}
+        _ent[r['surface']] = {'t': _t[:2400] + ('…' if len(_t) > 2400 else ''), 'len': len(_t), 'c': _c, 'n': len(r.get('citations') or []),
+                              'a': 1 if j['a']['toyota'] else 0, 'm': 1 if j['m']['toyota'] else 0, 'k': 1 if j['c']['toyota'] else 0, 'f': j['first']}
     _wsamp[_kw] = {'cat': CAT_W.get(SPI[_q]['kubun'], SPI[_q]['kubun']), 'vol': SV.get(_kw) or 0, 's': _ent}
 wideq['samples'] = _wsamp
 
@@ -430,7 +431,16 @@ for f in sorted(U.glob('models_*.json')):
                 models[k] = v
     except Exception:
         pass
-out = {'flow': flow, 'flow_dest': DEST, 'cites': cites, 'wideq': wideq, 'ga4x': ga4x, 'models': models,
+# ------------------------------------------------------------------ facts：答えの中のトヨタ認定中古車の説明を、公式の説明と照らす
+import factcheck
+
+
+def _chost(c):
+    return host(c.get('url')) or (c.get('domain') or '').lower().removeprefix('www.')
+
+
+facts = factcheck.run(ROUNDS, valid, [r['date'] for r in D['rounds']], set(G.get('named23', [])), _chost, SURF)
+out = {'flow': flow, 'flow_dest': DEST, 'cites': cites, 'wideq': wideq, 'ga4x': ga4x, 'models': models, 'facts': facts,
        'n_rows': [len(rows) for rows in ROUNDS], 'n_valid': [sum(1 for r in rows if valid(r)) for rows in ROUNDS],
        'aio_shown': [round(100 * sum(1 for r in rows if r['surface'] == 'aio' and valid(r)) / max(1, sum(1 for r in rows if r['surface'] == 'aio')), 1) for rows in ROUNDS]}
 p = Path(sys.argv[2]) if len(sys.argv) > 2 else B / 'board_extra.json'
