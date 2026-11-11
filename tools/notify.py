@@ -2,13 +2,13 @@
 """点検の結果を知らせる。GitHub の Issue（持ち主にメールで届く）と、設定があれば Slack に送る。
 
 使い方: python3 tools/notify.py status.json <ジョブの結果 success|failure>
-  - 要確認（公開を止めた）／処理の失敗 → 「【要確認】」の Issue を開く（内容が変わったときだけ追記）
-  - 注意（GA4の遅れ・予定の計測が届かない）→ 「【注意】」の Issue を開く（内容が変わったときだけ追記）
+  - 要確認（公開を止めた）／処理の失敗 → 「【要確認】」の Issue を開く（同じ件は追記）
+  - 注意（GA4の遅れ・予定の計測が届かない）→ 「【注意】」の Issue を開く
   - 明日が計測の予定日 → 「【予告】」の Issue を開く（同じ日は1回だけ）
   - 正常に戻ったら、開いている【要確認】【注意】を閉じる
 Slack に送るときは、リポジトリの Secrets に SLACK_WEBHOOK_URL を登録する（未登録なら送らない）。
 """
-import hashlib, json, os, sys, subprocess, urllib.request
+import json, os, sys, subprocess, urllib.request
 
 st_path, job = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else 'success')
 try:
@@ -53,40 +53,26 @@ def body(lines):
     return '\n'.join(lines + ['', f'ボード：{URL}', f'処理の記録：{RUN}', f"点検した時刻：{st.get('checked_at', '')}（日本時間）", '', '@' + OWNER])
 
 
-def last_text(num):
-    """開いている Issue の最後の書き込み（本文か最後のコメント）を返す。"""
-    out = gh('issue', 'view', str(num), '--json', 'body,comments')
-    try:
-        j = json.loads(out or '{}')
-    except Exception:
-        return ''
-    texts = [j.get('body') or ''] + [(c or {}).get('body') or '' for c in (j.get('comments') or [])]
-    return texts[-1]
-
-
-def post(prefix, title, head, bad, slack_text):
-    """同じ内容（問題の一覧が同じ）なら追記しない。1日に何便も動くので、同じメールが何通も届かないようにする。"""
-    mark = '<!-- sig:' + hashlib.sha256('\n'.join(sorted(bad)).encode('utf-8')).hexdigest()[:12] + ' -->'
-    b = body(head + [f'- {x}' for x in bad]) + '\n' + mark
-    ex = open_issues(prefix)
-    if ex:
-        if mark in last_text(ex[0]['number']):
-            print('同じ内容のお知らせは済み。追記しない:', prefix)
-            return
-        gh('issue', 'comment', str(ex[0]['number']), '--body', b)
-    else:
-        gh('issue', 'create', '--title', title, '--body', b)
-    slack(slack_text)
-
-
 lv = st.get('level', 'ok')
 bad = [c['l'] for c in st.get('checks', []) if c.get('lv') in ('fail', 'warn')]
 if lv == 'fail':
     t = '【要確認】中古車ボードの更新を止めました'
-    post('【要確認】', t, ['点検に通らなかったため、公開中のボードは前の版のままです。', ''], bad, t + '\n' + '\n'.join(bad) + f'\n{URL}')
+    b = body(['点検に通らなかったため、公開中のボードは前の版のままです。', ''] + [f'- {x}' for x in bad])
+    ex = open_issues('【要確認】')
+    if ex:
+        gh('issue', 'comment', str(ex[0]['number']), '--body', b)
+    else:
+        gh('issue', 'create', '--title', t, '--body', b)
+    slack(t + '\n' + '\n'.join(bad) + f'\n{URL}')
 elif lv == 'warn':
     t = '【注意】中古車ボードのデータに注意が必要です'
-    post('【注意】', t, ['ボードは更新しました。次の項目に注意が必要です。', ''], bad, t + '\n' + '\n'.join(bad))
+    b = body(['ボードは更新しました。次の項目に注意が必要です。', ''] + [f'- {x}' for x in bad])
+    ex = open_issues('【注意】')
+    if ex:
+        gh('issue', 'comment', str(ex[0]['number']), '--body', b)
+    else:
+        gh('issue', 'create', '--title', t, '--body', b)
+        slack(t + '\n' + '\n'.join(bad))
 if lv == 'ok':
     for pre in ['【要確認】', '【注意】']:
         for i in open_issues(pre):

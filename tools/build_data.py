@@ -257,9 +257,8 @@ def per_question(E):
         out[q['id']] = d
     return out
 
-def samples(E, maxlen=2400):
-    """各問×AIの1回目の答え（読む用）。t=答えの文（長いときは先頭 maxlen 字）、len=全体の字数、
-    c=参考元（先頭10件：[サイト, 題名, URL]）、n=参考元の数、a/m/k=トヨタのお店が出た（出現／本文の名前／参考元のサイト）、f=最初に名前が出た店"""
+def samples(E, maxlen=1100):
+    """各問×AIの1回目の答え（読む用）"""
     out = {}
     for r, j in E:
         if r['run'] != 0:
@@ -275,10 +274,9 @@ def samples(E, maxlen=2400):
                 continue
             seen.add((h, c.get('title')))
             cits.append([h, (c.get('title') or '')[:70], c.get('url') or ''])
-            if len(cits) >= 10:
+            if len(cits) >= 8:
                 break
-        out.setdefault(r['qid'], {})[r['surface']] = {'t': txt[:maxlen] + ('…' if cut else ''), 'len': len(txt), 'c': cits, 'n': len(r.get('citations') or []),
-                                                      'a': 1 if j['a']['toyota'] else 0, 'm': 1 if j['m']['toyota'] else 0, 'k': 1 if j['c']['toyota'] else 0, 'f': j['first']}
+        out.setdefault(r['qid'], {})[r['surface']] = {'t': txt[:maxlen] + ('…' if cut else ''), 'c': cits, 'n': len(r.get('citations') or []), 'a': 1 if j['a']['toyota'] else 0}
     return out
 
 data = {'generated_at': datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d %H:%M'),
