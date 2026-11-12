@@ -454,6 +454,14 @@ for r in gu['site_ai_pages_90']['rows']:
 ga['ai_to_ucar_pages_90'] = dict(aiu)
 data['ga4'] = ga
 
+# ------------------------------------------------------------------ 参考元のURLの索引（画面「2-4 記事のURLで探す」）
+import cindex
+data['cix'] = cindex.build(
+    [(rd['id'], rd['date'], rd['label'], rd.get('post', False), rd['runs'], rd['rows']) for rd in ROUNDS],
+    [(rd['id'], rd['date'], rd['label'], rd.get('post', False), rd['runs'], rd['rows']) for rd in DAILY],
+    ('W1', wide['date'], '検索1,761本', wrows, SP, SV),
+    {q['id']: i for i, q in enumerate(QUESTIONS)}, valid, judge, ART25, art25_hits)
+
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / 'board_data.json'
 json.dump(data, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print('wrote', out, out.stat().st_size)

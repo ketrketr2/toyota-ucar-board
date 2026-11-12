@@ -180,9 +180,14 @@ cat_by = {c: [0, 0, 0, 0] for c in CAT}
 n_by = [0, 0, 0, 0]
 nocite_by = [0, 0, 0, 0]
 media_mag = [0, 0, 0, 0]   # グーネットマガジン（goo-net.com/magazine）
+# 計測の回ごとの内訳（画面で、選んだ日・期間の分だけを足し合わせる）
+rby = [{'n_by': [0, 0, 0, 0], 'nocite_by': [0, 0, 0, 0], 'mag_by': [0, 0, 0, 0], 'cat_by': {c: [0, 0, 0, 0] for c in CAT},
+        'hb': collections.defaultdict(lambda: [0, 0, 0, 0])} for _ in ROUNDS]
 for ri, r in cite_rows:
     si = SURF.index(r['surface'])
     n_by[si] += 1
+    RB = rby[ri]
+    RB['n_by'][si] += 1
     hs = {}
     for c in r.get('citations') or []:
         u = c.get('url') or ''
@@ -195,22 +200,31 @@ for ri, r in cite_rows:
             hs['__mag'] = 'x'
     if not [k for k in hs if k != '__mag']:
         nocite_by[si] += 1
+        RB['nocite_by'][si] += 1
     if '__mag' in hs:
         media_mag[si] += 1
+        RB['mag_by'][si] += 1
         hs.pop('__mag')
     cats_here = set()
     for sh, cc in hs.items():
         cnt[sh] += 1
         by[sh][si] += 1
+        RB['hb'][sh][si] += 1
         hcat[sh] = cc
         cats_here.add(cc)
     for cc in cats_here:
         cat_by[cc][si] += 1
+        RB['cat_by'][cc][si] += 1
 top = []
 for h, n in cnt.most_common(40):
     top.append({'h': puny(h), 'name': NAME.get(h, ''), 'cat': hcat[h], 'n': n, 'by': by[h]})
 cites = {'n_answers': len(cite_rows), 'n_by': n_by, 'nocite_by': nocite_by, 'top': top,
          'cat_by': cat_by, 'cat_ja': CAT_JA, 'cat_order': CAT, 'mag_by': media_mag, 'hosts': len(cnt)}
+# 回ごと：上位80サイトの回数（AIごと）と、種類ごとの答えの数。サイトの名前と種類は hm に
+_H80 = [h for h, n in cnt.most_common(80)]
+cites['hm'] = {puny(h): [NAME.get(h, ''), hcat[h]] for h in _H80}
+cites['by_round'] = [{'n_by': RB['n_by'], 'nocite_by': RB['nocite_by'], 'mag_by': RB['mag_by'], 'cat_by': RB['cat_by'],
+                      'hb': {puny(h): RB['hb'][h] for h in _H80 if h in RB['hb']}} for RB in rby]
 
 # ------------------------------------------------------------------ wideq：1,417本の1本ずつ
 SP = yaml.safe_load(open(R / 'config/ucar_signal_prompts.yaml', encoding='utf-8'))['prompts']
