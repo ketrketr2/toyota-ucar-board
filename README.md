@@ -54,3 +54,19 @@
 ## 掲載が始まったら
 - tools/rounds.json の publish_start に、最初の記事の掲載日（YYYY-MM-DD）を書きます。その日以降の計測を「掲載後」として数え、ボードの見出しと判定が自動で掲載後の比較に切り替わります。
 - 記事が公開されたら、tools/build_data.py の ARTICLES に、その記事のURL・題名・掲載日を書きます。KPI①（記事引用率）に入り、2-4「今回の記事」にも結果が出ます。
+
+## 記事チェック（check/・v15.4）
+公開URL：https://ketrketr2.github.io/toyota-ucar-board/check/ （ボードと同じ ID とパスワードで開きます。ボードの目次（2 タイアップの効果）の「記事チェック」からも開けます）
+- 媒体の原稿（Word のファイル、Word・Google ドキュメントからのコピー、テキスト）を入れると、AI 検索（AI Overviews など）に引用される形かを判定し、媒体に戻すコメント（コピー・テキスト・CSV）まで作ります。段階は構成案・初稿・最終稿・公開後から選びます。
+- 判定は、機械の点検（形・数字・正式表記・PR 表記など）と、Claude の判定3本（担当の質問と中身／直す点と誤字脱字／数字と正式表記の照合）を合わせて出します。Claude は Claude Opus 5.5（使えないときは Claude Sonnet 5.5）を、見ている人のブラウザから Claude の API で呼びます。
+- 画面（check/index.html）は、ボードと同じ公開鍵で暗号化してあります。画面を直したときは、手元で組み立てて暗号化し、check/index.html だけを置き換えます（平文の画面は置きません）。
+
+### Claude の鍵（.github/workflows/check-key.yml）
+- 鍵は Settings > Secrets and variables > Actions の ANTHROPIC_API_KEY にだけ置きます。check-key（2時間ごと。Actions > check-key > Run workflow ですぐにも）が、ボードの公開鍵で暗号化して check/key.json に置きます。鍵が変わったかは指紋（check/key_fp.txt）で見ます。
+- 入口で ID とパスワードから開いたときだけ、画面が鍵を使えます。鍵は記事チェック専用にし、Claude Console のワークスペースで月の上限を決めておきます。
+- 鍵を替えるとき：ANTHROPIC_API_KEY を新しい鍵で上書きし、check-key を動かします（または次の便を待ちます）。古い鍵は Claude Console で無効にします。
+- 鍵がない間・使えない間は、機械の点検だけで判定し、画面の帯で理由を知らせます。
+
+### 記録と原稿の扱い
+- 判定の記録（点数と、指摘の60字までの抜き出し）は、見ている人のブラウザに残します（［これまで］）。ほかの人やパソコンと分けるときは［記録を書き出す］→［記録を読み込む］。
+- 書きかけの原稿は、そのタブを閉じると消える場所に置きます。原稿は判定のためにだけ Anthropic の API に送ります。
