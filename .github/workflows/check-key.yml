@@ -1,0 +1,59 @@
+name: check-key
+
+# 記事チェック（check/）が Claude を使うための鍵を、ボードの公開鍵で暗号化して check/key.json に置く。
+#   鍵そのものは Settings > Secrets and variables > Actions の ANTHROPIC_API_KEY にだけ置く（平文はリポジトリにもページにも置かない）。
+#   登録・差し替えのあと、2時間ごとの便で自動で入れ替わる。すぐ入れるときは Actions > check-key > Run workflow。
+#   鍵が登録されていない間は何もしない（記事チェックは機械の点検だけで動く）。
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 */2 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/check-key.yml"
+      - "tools/seal_key.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: check-key
+  cancel-in-progress: false
+
+jobs:
+  seal:
+    if: github.repository == 'ketrketr2/toyota-ucar-board'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 道具を入れる
+        run: pip install cryptography
+
+      - name: 鍵を暗号化する
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 tools/seal_key.py
+
+      - name: 置く
+        run: |
+          git config user.name "ucar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add check/key.json check/key_fp.txt 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "変更なし"
+            exit 0
+          fi
+          git commit -m "check: Claude の鍵を入れ替え（暗号化）"
+          for i in 1 2 3; do
+            git pull --rebase -q && git push && exit 0
+            sleep 5
+          done
+          exit 1
