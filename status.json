@@ -1,9 +1,9 @@
 {
- "checked_at": "2026-11-15 10:52",
+ "checked_at": "2026-11-15 12:05",
  "level": "ok",
  "unchanged": false,
- "data_hash": "ed9b2041f23786bb",
- "data_generated_at": "2026-11-15 10:52",
+ "data_hash": "66ff2b2f7d343774",
+ "data_generated_at": "2026-11-15 12:05",
  "n_rounds": 2,
  "rounds": [
   {
@@ -51,5 +51,5 @@
    "l": "GA4（toyota.jp）：11/14 までのデータ"
   }
  ],
- "published": "2026-11-15 10:52"
+ "published": "2026-11-15 12:05"
 }
