@@ -1,9 +1,9 @@
 {
- "checked_at": "2026-11-17 14:15",
+ "checked_at": "2026-11-18 12:42",
  "level": "ok",
  "unchanged": false,
- "data_hash": "748e1228d7053b4a",
- "data_generated_at": "2026-11-17 14:15",
+ "data_hash": "27bebe071e4f05f0",
+ "data_generated_at": "2026-11-18 12:42",
  "n_rounds": 2,
  "rounds": [
   {
@@ -17,7 +17,7 @@
    "post": false
   }
  ],
- "ga4_until": "2026-11-16",
+ "ga4_until": "2026-11-17",
  "wide_date": "2026-10-19",
  "next_measure": [],
  "notices": [],
@@ -48,8 +48,8 @@
   },
   {
    "lv": "ok",
-   "l": "GA4（toyota.jp）：11/16 までのデータ"
+   "l": "GA4（toyota.jp）：11/17 までのデータ"
   }
  ],
- "published": "2026-11-17 14:15"
+ "published": "2026-11-18 12:42"
 }
